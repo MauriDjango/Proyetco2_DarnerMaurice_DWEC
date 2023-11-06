@@ -1,101 +1,76 @@
 import { ValidateClient } from './ValidateClient.js'
 import { createClient } from "./Client.js";
-import { ClientObjectStore, getDB } from '../db/ClientsObjectStore.js'
+import { addClient, clientExists } from "../../db/ClientsObjectStore.js"
+
+const submitButton = document.getElementById("submitButton")
+const name = document.getElementById("name")
+const email = document.getElementById("email")
+const phone = document.getElementById("phone")
+const company = document.getElementById("company")
 
 
-let clientObjectStore
-
-console.log("Initializing client object store")
-getDB().then((db) => {
-  console.log("ClientObjectStore successfully loaded")
-  clientObjectStore = new ClientObjectStore(db)
-}).catch((error) => {
-    console.log("ClientObjectStore loading error: " + error)
-  })
-
-document.addEventListener("DOMContentLoaded", function () {
-  loadEventListeners()
-})
-
-export function loadEventListeners() {
-  const submitButton = document.getElementById("submitButton")
-  const name = document.getElementById("name")
-  const email = document.getElementById("email")
-  const phone = document.getElementById("phone")
-  const company = document.getElementById("company")
-  const formData = {
-    name: null,
-    email: null,
-    phone: null,
-    company: null
-  }
-
-  name.addEventListener("blur", function (e) {
-    formBlurHandler(formData, e.target)
-    toggleSubmit(validForm(formData), submitButton)
-  })
-  email.addEventListener("blur", function (e) {
-    formBlurHandler(formData, e.target)
-    toggleSubmit(validForm(formData), submitButton)
-  })
-  phone.addEventListener("blur", function (e) {
-    formBlurHandler(formData, e.target)
-    toggleSubmit(validForm(formData), submitButton)
-  })
-  company.addEventListener("blur", function (e) {
-    formBlurHandler(formData, e.target)
-    toggleSubmit(validForm(formData), submitButton)
-  })
-  submitButton.addEventListener("click", function (e) {
-    e.preventDefault()
-    submitForm(formData)
-  })
+const formValid = {
+  nameValid: false,
+  emailValid: false,
+  phoneValid: false,
+  companyValid: false,
+  valid: false
 }
 
-export function formBlurHandler(formData, target, submitButton) {
+const formData = {
+  nameValid: null,
+  emailValid: null,
+  phoneValid: null,
+  companyValid: null
+}
+
+name.addEventListener("blur", function (e) {
+  formBlurHandler(formData, formValid, e.target)
+})
+email.addEventListener("blur", function (e) {
+  formBlurHandler(formData, formValid, e.target)
+})
+phone.addEventListener("blur", function (e) {
+  formBlurHandler(formData, formValid, e.target)
+})
+company.addEventListener("blur", function (e) {
+  formBlurHandler(formData, formValid, e.target)
+})
+submitButton.addEventListener("click", function (e) {
+  e.preventDefault()
+  submitForm(formData, formValid)
+})
+
+function formBlurHandler(formData, formValid, target) {
   const fieldValue = target.value
 
   switch (target.id) {
     case "name": {
-      if (ValidateClient.validName(fieldValue)) {
-        removeAlert(target)
-        formData.name = fieldValue
-      } else {
-        alertField(target)
-      }
+      formValid.nameValid = ValidateClient.validName(fieldValue)
+      if (!formValid.nameValid) { alertField(target) } else { removeAlert(target); formData.name = fieldValue }
       break
     }
     case "email": {
-      if (ValidateClient.validEmail(fieldValue)) {
-        removeAlert(target)
-        formData.email = fieldValue
-      } else {
-        alertField(target)
-      }
+      formValid.emailValid = ValidateClient.validEmail(fieldValue)
+      if (!formValid.emailValid) { alertField(target) } else { removeAlert(target); formData.email = fieldValue }
       break
     }
     case "phone": {
-      if (ValidateClient.validPhone(fieldValue)) {
-        removeAlert(target)
-        formData.phone = fieldValue
-      } else {
-        alertField(target)
-      }
+      formValid.phoneValid = ValidateClient.validPhone(fieldValue)
+      if (!formValid.phoneValid) { alertField(target) } else { removeAlert(target); formData.phone = fieldValue }
       break
     }
     case "company": {
-      if (ValidateClient.validCompany(fieldValue)) {
-        removeAlert(target)
-        formData.company = fieldValue
-      } else {
-        alertField(target)
-      }
+      formValid.companyValid = ValidateClient.validCompany(fieldValue)
+      if (!formValid.companyValid) { alertField(target) } else { removeAlert(target); formData.company = fieldValue}
       break
     }
   }
+  validForm(formValid)
+  toggleSubmit(formValid, submitButton)
 }
 
-export function alertField(form) {
+  export function alertField(form) {
   const alert = document.getElementById(`${form.id}.alert`)
   if (alert !== null) {
     alert.remove()
@@ -117,11 +92,19 @@ export function removeAlert(form) {
   }
 }
 
-export function validForm(formData) {
-  return formData.name !== null &&
-    formData.phone !== null &&
-    formData.email !== null &&
-    formData.company !== null
+export function validForm(form) {
+  form.valid = form.nameValid &&
+    form.companyValid &&
+    form.emailValid &&
+    form.companyValid
+}
+
+export function resetFormValid(formValid) {
+  formValid.nameValid = false
+  formValid.emailValid = false
+  formValid.phoneValid = false
+  formValid.companyValid = false
+  formValid.valid = false
 }
 
 export function resetFormData(formData) {
@@ -130,24 +113,25 @@ export function resetFormData(formData) {
   formData.phone = null
   formData.company = null
 }
-
-export function toggleSubmit(formValid, submitButton) {
-  if (formValid) {
-    submitButton.removeAttribute("disabled")
-    submitButton.setAttribute("class", "bg-teal-600 hover:bg-teal-900 w-full mt-5 p-2 text-white uppercase font-bold")
+export function toggleSubmit(form, submit) {
+  if (form.valid) {
+    submit.removeAttribute("disabled")
+    submit.setAttribute("class", "bg-teal-600 hover:bg-teal-900 w-full mt-5 p-2 text-white uppercase font-bold")
   } else {
-    submitButton.setAttribute("disabled", true)
-    submitButton.setAttribute("class", "bg-grey-600 hover:bg-grey-900 w-full mt-5 p-2 text-white uppercase font-bold")
+    submit.setAttribute("disabled", true)
+    submit.setAttribute("class", "bg-grey-600 hover:bg-grey-900 w-full mt-5 p-2 text-white uppercase font-bold")
   }
 }
 
-function submitForm(formData) {
+
+function submitForm(formData, formValid) {
   const client = createClient(formData)
-  if (clientObjectStore.clientExists(client.email)) {
-    console.log("Client already exists")
+  if (!clientExists(client.email)) {
+    addClient(client)
   } else {
-    clientObjectStore.addClient(client)
+    console.log("Client already exists")
   }
   resetFormData(formData)
+  resetFormValid(formValid)
 }
 
