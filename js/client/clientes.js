@@ -1,31 +1,55 @@
-import { getAllClients, removeClient } from "../../db/ClientsObjectStore.js"
-import { editClientInfo } from "./editarcliente.js";
-
+import { ClientObjectStore, getDB } from '../db/ClientsObjectStore.js'
 
 const clientListHTML = document.getElementById("listado-clientes")
-const showClientButton = document.getElementById("showClients")
-
-document.addEventListener("click", (e) => {
-    clickHandler(e.target)
+let clientObjectStore
+getDB()
+.then((db) => {
+    clientObjectStore = new ClientObjectStore(db)
 })
-showClientButton.addEventListener('click', function(e) {
-    getAllClients(renderClientList)
+.catch((error) => {
+    console.error(error)
 })
 
-function clickHandler(clientRow) {
+document.addEventListener("DOMContentLoaded", function () {
+    loadEventListeners(clientListHTML)
+})
+
+function loadEventListeners(clientListHTML) {
+    const showClientButton = document.getElementById("showClients")
+
+    document.addEventListener("click", (e) => {
+        clickHandler(e.target)
+    })
+    showClientButton.addEventListener('click', function (e) {
+        clientObjectStore.getAllClients().then((clients) => {
+            renderClientList(clients, clientListHTML)
+
+        })
+    })
+}
+
+function clickHandler(clientRow, clientListHTML) {
     if (clientRow.id.includes("edit"))
     {
+        window.location.href = "editar-cliente.html"
+/*
         editClientInfo(clientRow.id.split("-")[0])
-        getAllClients(renderClientList)
+*/
+        clientObjectStore.getAllClients().then((clients) => {
+            renderClientList(clients, clientListHTML)
+        })
     }
     else if (clientRow.id.includes("delete"))
     {
-        removeClient(clientRow.id.split("-")[0])
-        getAllClients(renderClientList)
+        clientObjectStore.removeClient(clientRow.id.split("-")[0])
+        clientObjectStore.getAllClients().then((clients) => {
+            renderClientList(clients, clientListHTML)
+        })
     }
 }
 
-function renderClientList(clients) {
+function renderClientList(clients, clientListHTML) {
+    console.log("Render clients list", clients)
     clientListHTML.innerHTML = ""
 
     for (const client of clients) {
