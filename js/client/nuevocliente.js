@@ -1,12 +1,12 @@
 import { ValidateClient } from './ValidateClient.js'
 import { createClient } from "./Client.js";
-import { ClientObjectStore, getDB } from '../db/ClientsObjectStore.js'
+import { ClientObjectStore, getIndexedDB } from '../db/ClientsObjectStore.js'
 
 
 let clientObjectStore
 
 console.log("Initializing client object store")
-getDB().then((db) => {
+getIndexedDB().then((db) => {
   console.log("ClientObjectStore successfully loaded")
   clientObjectStore = new ClientObjectStore(db)
 }).catch((error) => {

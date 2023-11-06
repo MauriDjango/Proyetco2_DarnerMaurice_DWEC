@@ -1,9 +1,9 @@
-import { ClientObjectStore, getDB } from '../db/ClientsObjectStore.js'
+import { ClientObjectStore, getIndexedDB } from '../db/ClientsObjectStore.js'
 import { formBlurHandler, loadEventListeners } from './nuevocliente.js'
 
 
 let clientObjectStore
-getDB()
+getIndexedDB()
 .then((db) => {
   clientObjectStore = new ClientObjectStore(db)
 })

@@ -1,8 +1,8 @@
-import { ClientObjectStore, getDB } from '../db/ClientsObjectStore.js'
+import { ClientObjectStore, getIndexedDB } from '../db/ClientsObjectStore.js'
 
 const clientListHTML = document.getElementById("listado-clientes")
 let clientObjectStore
-getDB()
+getIndexedDB()
 .then((db) => {
     clientObjectStore = new ClientObjectStore(db)
 })
@@ -18,7 +18,7 @@ function loadEventListeners(clientListHTML) {
     const showClientButton = document.getElementById("showClients")
 
     document.addEventListener("click", (e) => {
-        clickHandler(e.target)
+        clickHandler(e.target, clientListHTML)
     })
     showClientButton.addEventListener('click', function (e) {
         clientObjectStore.getAllClients().then((clients) => {

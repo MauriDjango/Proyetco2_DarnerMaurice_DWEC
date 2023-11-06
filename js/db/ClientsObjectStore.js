@@ -1,6 +1,6 @@
 
 
-export function getDB() {
+export function getIndexedDB() {
     console.log('Call to getDB')
     return new Promise((resolve, reject) => {
         const dbName = "IDB";
@@ -35,12 +35,12 @@ export class ClientObjectStore {
 
     _objectStoreName = "clientObjectStore"
 
-    constructor(db) {
-        this._db = db;
+    constructor(indexedDB) {
+        this._db = indexedDB;
         this._objectStore = null;
         this._transaction = null;
 
-        console.log("Initializing ClientObjectStore", db);
+        console.log("Initializing ClientObjectStore", indexedDB);
 
         // You can use a separate method to create the object store when needed
         this.initializeObjectStore();
@@ -136,21 +136,22 @@ export class ClientObjectStore {
         return exists
     }
 
-    async getAllClients () {
-        const transaction = this._db.transaction([this._objectStoreName], "readonly")
-        const clientObjectStore = transaction.objectStore(this._objectStoreName)
-        const request = clientObjectStore.getAll();
+    getAllClients () {
+        return new Promise((resolve, reject) => {
+            const transaction = this._db.transaction([this._objectStoreName], "readonly")
+            const clientObjectStore = transaction.objectStore(this._objectStoreName)
+            const request = clientObjectStore.getAll();
 
-        const clients = request.onsuccess = (event) => {
-            console.log("Successfully retrieved all clients");
-            return event;
-        };
+            const clients = request.onsuccess = (event) => {
+                console.log("Successfully retrieved all clients");
+                resolve(event.target.result)
+            };
 
-        request.onerror = (event) => {
-            console.log("Unable to retrieve all clients", event.target.error);
-        }
-
-        return clients
+            request.onerror = (event) => {
+                console.log("Unable to retrieve all clients", event.target.error);
+                reject(event.error)
+            }
+        })
     }
 }
 
