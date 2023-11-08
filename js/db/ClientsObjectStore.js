@@ -1,160 +1,153 @@
+import { clientIDBManager } from './DatabaseFactory.js';
 
+export class ObjectStore {
+    _objectStoreName;
+    _idbManager;
 
-export function getIndexedDB() {
-    console.log('Call to getDB')
-    return new Promise((resolve, reject) => {
-        const dbName = "IDB";
-        const dbVersion = 3;
-        const request = indexedDB.open(dbName, dbVersion);
-
-        console.log("Processing request")
-        request.onupgradeneeded = (event) => {
-            console.log("Upgrading DB");
-            const db = event.target.result;
-            resolve(db); // Resolve the promise with the database object
-            console.log("Database updated successfully");
-
-            // Set up your database schema and initial data here if needed
-
-            // Event listeners for success and error should be outside onupgradeneeded
-        };
-        request.onsuccess = (event) => {
-            const db = event.target.result;
-            resolve(db); // Resolve the promise with the database object
-            console.log("Database opened successfully");
-        };
-        request.onerror = (event) => {
-            reject(event.error); // Reject the promise with the error
-            console.error("Error opening the database", event.error);
-        };
-    });
-}
-
-
-export class ClientObjectStore {
-
-    _objectStoreName = "clientObjectStore"
-
-    constructor(indexedDB) {
-        this._db = indexedDB;
-        this._objectStore = null;
-        this._transaction = null;
-
-        console.log("Initializing ClientObjectStore", indexedDB);
+    constructor(idbManager, objectStoreName) {
+        this._idbManager = idbManager;
+        this._objectStoreName = objectStoreName;
 
         // You can use a separate method to create the object store when needed
         this.initializeObjectStore();
     }
 
-    initializeObjectStore() {
-        if (!this._db.objectStoreNames.contains(this._objectStoreName)) {
-            this._objectStore = this._db.createObjectStore(this._objectStoreName, { keyPath: "email" });
+    async initializeObjectStore() {
+        console.log("Initializing object store:", this._objectStoreName);
+        const db = await this._idbManager.openDB();
+        console.log("Active database:", db, "Object store names:", db.objectStoreNames);
+        if (!db.objectStoreNames.contains(this._objectStoreName)) {
+            const store = db.createObjectStore(this._objectStoreName, { keyPath: "email" });
 
             // Create indexes here if needed
-            this._objectStore.createIndex("name", "name",
-              { unique: false });
-            this._objectStore.createIndex("email", "email",
-              { unique: true });
-            this._objectStore.createIndex("phone", "phone",
-              { unique: false });
-            this._objectStore.createIndex("company", "company",
-              { unique: false });
+            store.createIndex("name", "name", { unique: false });
+            store.createIndex("email", "email", { unique: true });
+            store.createIndex("phone", "phone", { unique: false });
+            store.createIndex("company", "company", { unique: false });
 
-            console.log("Object store 'clientObjectStore' created");
+            console.log("Object store '" + this._objectStoreName + "' created");
         } else {
-            console.log("Object store 'clientObjectStore' already exists")
+            console.log("Object store '" + this._objectStoreName + "' already exists");
         }
+        this._idbManager.closeDB(db);
     }
 
-    addClient (client) {
-        const transaction = this._db.transaction([this._objectStoreName], "readwrite")
-        const clientObjectStore = transaction.objectStore(this._objectStoreName)
-        const request = clientObjectStore.add(client)
+    async addClient(clientData) {
+        const db = await this._idbManager.openDB();
+        const transaction = db.transaction([this._objectStoreName], "readwrite");
+        const objectStore = transaction.objectStore(this._objectStoreName);
+        const result = objectStore.add(clientData);
 
-        request.onsuccess = (event) => {
-            console.log("Client successfully added")
-        }
-        request.onerror = (event) => {
-            console.log("Unable to add client", event.target.error)
-        }
+        result.onsuccess = (event) => {
+            console.log("Client added successfully");
+            this._idbManager.closeDB(db);
+        };
+        result.onerror = (event) => {
+            console.log("Error adding client:", event.error);
+            this._idbManager.closeDB(db);
+        };
     }
 
-    getClient (clientEmail) {
-        const transaction = this._db.transaction([this._objectStoreName], "readonly")
-        const clientObjectStore = transaction.objectStore(this._objectStoreName)
-        const request = clientObjectStore.get(clientEmail)
-
-        request.onsuccess = (event) => {
-            console.log("Client successfully fetched")
-        }
-        request.onerror = (event) => {
-            console.log("Unable to fetch client", event.target.error)
-        }
-        return request.result
-    }
-
-    removeClient (clientEmail) {
-        const transaction = this._db.transaction([this._objectStoreName], "readwrite")
-        const clientObjectStore = transaction.objectStore(this._objectStoreName)
-        const request = clientObjectStore.delete(clientEmail)
-
-        request.onsuccess = (event) => {
-            console.log("Client successfully deleted")
-        }
-        request.onerror = (event) => {
-            console.log("Unable to delete client", event.target.error)
-        }
-    }
-
-    editClient (clientData) {
-        const transaction = this._db.transaction([this._objectStoreName], "readwrite")
-        const clientObjectStore = transaction.objectStore(this._objectStoreName)
-        const request = clientObjectStore.put(clientData)
-
-        request.onsuccess = (event) => {
-            console.log("Client successfully edited")
-        }
-        request.onerror = (event) => {
-            console.log("Unable to edit client", event.target.error)
-        }
-    }
-
-    clientExists (clientEmail) {
-        const transaction = this._db.transaction([this._objectStoreName], "readonly")
-        const clientObjectStore = transaction.objectStore(this._objectStoreName)
-        const request = clientObjectStore.get(clientEmail)
-        let exists = false
-
-        request.onsuccess = (event) => {
-            console.log("Client exists")
-            exists = true
-        }
-        request.onerror = (event) => {
-            console.log("Client does not exist", event.target.error)
-            exists = false
-        }
-        return exists
-    }
-
-    getAllClients () {
+    async getClient(clientEmail) {
+        const db = await this._idbManager.openDB();
         return new Promise((resolve, reject) => {
-            const transaction = this._db.transaction([this._objectStoreName], "readonly")
-            const clientObjectStore = transaction.objectStore(this._objectStoreName)
-            const request = clientObjectStore.getAll();
+            const transaction = db.transaction([this._objectStoreName], "readwrite");
+            const objectStore = transaction.objectStore(this._objectStoreName);
+            const result = objectStore.get(clientEmail);
 
-            const clients = request.onsuccess = (event) => {
-                console.log("Successfully retrieved all clients");
-                resolve(event.target.result)
+            result.onsuccess = (event) => {
+                console.log("Client fetched successfully:", event.target.result);
+                this._idbManager.closeDB(db);
+                resolve(event.target.result);
+            };
+            result.onerror = (event) => {
+                console.log("Client not found:", event.error);
+                reject(event.error);
+                this._idbManager.closeDB(db);
+            };
+        });
+    }
+
+    async removeClient(clientEmail) {
+        const db = await this._idbManager.openDB();
+        const transaction = db.transaction([this._objectStoreName], "readwrite");
+        const objectStore = transaction.objectStore(this._objectStoreName);
+        const result = objectStore.delete(clientEmail);
+
+        result.onsuccess = (event) => {
+            console.log("Client deleted successfully");
+            this._idbManager.closeDB(db);
+        };
+        result.onerror = (event) => {
+            console.log("Error removing the client:", event.error);
+            this._idbManager.closeDB(db);
+        };
+    }
+
+    async editClient(clientData) {
+        console.log("Editing client:", clientData);
+        const db = await this._idbManager.openDB();
+        const transaction = db.transaction([this._objectStoreName], "readwrite");
+        const objectStore = transaction.objectStore(this._objectStoreName);
+        const result = objectStore.put(clientData);
+
+        result.onsuccess = (event) => {
+            console.log("Client edited successfully");
+            this._idbManager.closeDB(db);
+        };
+        result.onerror = (event) => {
+            console.log("Error editing the client:", event.error);
+            this._idbManager.closeDB(db);
+        };
+    }
+
+    async clientExists(clientEmail) {
+        console.log("Checking if client exists for clientEmail:", clientEmail);
+
+        return new Promise(async (resolve, reject) => {
+            const db = await this._idbManager.openDB();
+            const transaction = db.transaction([this._objectStoreName], "readwrite");
+            const objectStore = transaction.objectStore(this._objectStoreName);
+            const result = objectStore.get(clientEmail);
+
+            result.onsuccess = (event) => {
+                if (event.target.result !== undefined) {
+                    console.log("Client exists for clientEmail:", clientEmail);
+                    resolve(true);
+                } else {
+                    console.log("Client does not exist for clientEmail:", clientEmail);
+                    resolve(false);
+                }
+                this._idbManager.closeDB(db);
             };
 
-            request.onerror = (event) => {
-                console.log("Unable to retrieve all clients", event.target.error);
-                reject(event.error)
-            }
-        })
+            result.onerror = (event) => {
+                console.log("Error checking if client exists:", event.error);
+                this._idbManager.closeDB(db);
+                reject(event.error);
+            };
+        });
+    }
+
+    async getAllClients() {
+        return new Promise(async (resolve) => {
+            const db = await this._idbManager.openDB();
+            const transaction = db.transaction([this._objectStoreName], "readwrite");
+            const objectStore = transaction.objectStore(this._objectStoreName);
+            const result = objectStore.getAll();
+
+            result.onsuccess = (event) => {
+                console.log("Retrieved all clients successfully:", event.target.result);
+                resolve(event.target.result);
+                this._idbManager.closeDB(db);
+            };
+            result.onerror = (event) => {
+                console.log("Error retrieving all clients:", event.error);
+                this._idbManager.closeDB(db);
+            };
+        });
     }
 }
 
-
-
-
+const clientStoreName = "clientObjectStore";
+export const clientObjectStore = new ObjectStore(clientIDBManager, clientStoreName);

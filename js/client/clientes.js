@@ -1,50 +1,35 @@
-import { ClientObjectStore, getIndexedDB } from '../db/ClientsObjectStore.js'
+import { clientObjectStore } from '../db/ClientsObjectStore.js'
 
-const clientListHTML = document.getElementById("listado-clientes")
-let clientObjectStore
-getIndexedDB()
-.then((db) => {
-    clientObjectStore = new ClientObjectStore(db)
-})
-.catch((error) => {
-    console.error(error)
-})
+export const localStorageClientKey = "clientDataEdit"
 
 document.addEventListener("DOMContentLoaded", function () {
-    loadEventListeners(clientListHTML)
-})
+    const clientListHTML = document.getElementById("listado-clientes")
 
-function loadEventListeners(clientListHTML) {
-    const showClientButton = document.getElementById("showClients")
+    loadEventListeners()
 
-    document.addEventListener("click", (e) => {
-        clickHandler(e.target, clientListHTML)
-    })
-    showClientButton.addEventListener('click', function (e) {
-        clientObjectStore.getAllClients().then((clients) => {
-            renderClientList(clients, clientListHTML)
+    function loadEventListeners() {
 
+        clientListHTML.addEventListener("click", async (e) => {
+            await clickHandler(e.target, clientListHTML)
         })
-    })
-}
-
-function clickHandler(clientRow, clientListHTML) {
-    if (clientRow.id.includes("edit"))
-    {
-        window.location.href = "editar-cliente.html"
-/*
-        editClientInfo(clientRow.id.split("-")[0])
-*/
         clientObjectStore.getAllClients().then((clients) => {
             renderClientList(clients, clientListHTML)
         })
     }
-    else if (clientRow.id.includes("delete"))
-    {
-        clientObjectStore.removeClient(clientRow.id.split("-")[0])
-        clientObjectStore.getAllClients().then((clients) => {
-            renderClientList(clients, clientListHTML)
-        })
+})
+
+async function clickHandler (clientRow, clientListHTML) {
+    if (clientRow.id.includes("edit")) {
+        const clientData = await clientObjectStore.getClient(clientRow.id.split("-")[0])
+        console.log("getClient", clientData)
+        localStorage.setItem(localStorageClientKey, JSON.stringify(clientData))
+        window.location.href = "editar-cliente.html"
+    } else if (clientRow.id.includes("delete")) {
+        clientObjectStore.removeClient(clientRow.id.split("-")[0]).then(r =>
+          clientObjectStore.getAllClients().then((clients) => {
+              renderClientList(clients, clientListHTML)
+          })
+        )
     }
 }
 
@@ -55,11 +40,10 @@ function renderClientList(clients, clientListHTML) {
     for (const client of clients) {
         let row = document.createElement('tr')
 
-        const clientName = client.name || "N/A"; // Provide a default value if name is null
         row.innerHTML = `
-        <td>${clientName}</td>
-        <td>${client.email}</td>
+        <td>${client.name}</td>
         <td>${client.phone}</td>
+        <td>${client.email}</td>
         <td>${client.company}
         <td><button type="button" id="${client.email}-edit">Edit</button></td>
         <td><button type="button" id="${client.email}-delete">Delete</button></td>
